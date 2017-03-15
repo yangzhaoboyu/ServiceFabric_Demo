@@ -9,9 +9,20 @@ using Microsoft.ServiceFabric.Services.Communication.Runtime;
 
 namespace Employee.Domain.Interface.Bus
 {
-    internal class ServiceBusCommunicationListener : ICommunicationListener, IDisposable
+    /// <summary>
+    /// </summary>
+    /// <seealso cref="Microsoft.ServiceFabric.Services.Communication.Runtime.ICommunicationListener" />
+    /// <seealso cref="System.IDisposable" />
+    public sealed class ServiceBusCommunicationListener : ICommunicationListener, IDisposable
     {
+        /// <summary>
+        ///     The service bus connection string
+        /// </summary>
         private readonly string serviceBusConnectionString;
+
+        /// <summary>
+        ///     The service bus queue name
+        /// </summary>
         private readonly string serviceBusQueueName;
 
         /// <summary>
@@ -37,7 +48,15 @@ namespace Employee.Domain.Interface.Bus
             }
         }
 
-        protected QueueClient ServiceBusClient { get; private set; }
+        /// <summary>
+        ///     Gets the processing message.
+        /// </summary>
+        private ManualResetEvent ProcessingMessage { get; } = new ManualResetEvent(true);
+
+        /// <summary>
+        ///     Gets the service bus client.
+        /// </summary>
+        private QueueClient ServiceBusClient { get; set; }
 
         #region ICommunicationListener Members
 
@@ -48,7 +67,7 @@ namespace Employee.Domain.Interface.Bus
         /// </summary>
         public void Abort()
         {
-            throw new NotImplementedException();
+            this.Dispose();
         }
 
         /// <summary>
@@ -62,6 +81,8 @@ namespace Employee.Domain.Interface.Bus
         /// </returns>
         public Task CloseAsync(CancellationToken cancellationToken)
         {
+            this.ProcessingMessage.WaitOne(10);
+            this.ProcessingMessage.Dispose();
             return this.ServiceBusClient.CloseAsync();
         }
 
@@ -82,8 +103,20 @@ namespace Employee.Domain.Interface.Bus
             this.ServiceBusClient = QueueClient.CreateFromConnectionString(this.serviceBusConnectionString, this.serviceBusQueueName);
             this.ServiceBusClient.OnMessage(message =>
             {
-                string messageBody = message.GetBody<string>();
-                ServiceEventSource.Current.Message($"Consumer Message {messageBody}");
+                try
+                {
+                    this.ProcessingMessage.Reset();
+                    string messageBody = message.GetBody<string>();
+                    ServiceEventSource.Current.Message($"Consumer Message {messageBody}");
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    this.ProcessingMessage.Set();
+                }
             });
             return Task.FromResult(this.serviceBusConnectionString);
         }
@@ -98,8 +131,20 @@ namespace Employee.Domain.Interface.Bus
         public void Dispose()
         {
             GC.SuppressFinalize(this);
+            this.Dispose(true);
         }
 
         #endregion IDisposable Members
+
+        /// <summary>
+        ///     Releases unmanaged and - optionally - managed resources.
+        /// </summary>
+        /// <param name="disposing"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
+        private void Dispose(bool disposing)
+        {
+            if (!disposing) return;
+            this.ProcessingMessage.Set();
+            this.ProcessingMessage.Dispose();
+        }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Fabric;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace MessageConsumer
@@ -10,7 +8,7 @@ namespace MessageConsumer
     internal static class Program
     {
         /// <summary>
-        /// 这是服务主机进程的入口点。
+        ///     这是服务主机进程的入口点。
         /// </summary>
         private static void Main()
         {
@@ -21,8 +19,7 @@ namespace MessageConsumer
                 // 在 Service Fabric 创建此服务类型的实例时，
                 // 会在此主机进程中创建类的实例。
 
-                ServiceRuntime.RegisterServiceAsync("MessageConsumerType",
-                    context => new MessageConsumer(context)).GetAwaiter().GetResult();
+                ServiceRuntime.RegisterServiceAsync("MessageConsumerType", context => new MessageConsumer(context)).GetAwaiter().GetResult();
 
                 ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(MessageConsumer).Name);
 
