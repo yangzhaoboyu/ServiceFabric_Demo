@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Fabric;
 using System.Fabric.Description;
 using System.Threading;
@@ -12,9 +11,6 @@ using Employee.Service.Models.User;
 using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
 using Microsoft.ServiceFabric.Data.Notifications;
-using Microsoft.ServiceFabric.Services.Communication.Runtime;
-using Microsoft.ServiceFabric.Services.Remoting.Runtime;
-using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace Employee.Service
 {
@@ -22,16 +18,20 @@ namespace Employee.Service
     /// </summary>
     /// <seealso cref="Microsoft.ServiceFabric.Services.Runtime.StatefulService" />
     /// <seealso cref="Employee.Domain.Interface.IUserDomainService" />
-    internal sealed class Service : StatefulService, IUserDomainService
+    internal sealed class Service : JinyinmaoStatefulService, IUserDomainService
     {
         private readonly SendService sendService = new SendService();
         private IBackupStore backupManager;
         private BackupManagerType backupStorageType;
 
-        public Service(StatefulServiceContext context)
-            : base(context)
+        /// <summary>
+        ///     Creates a new StatefulService with default ReliableStateManager.
+        /// </summary>
+        /// <param name="serviceContext">
+        ///     A <see cref="T:System.Fabric.StatefulServiceContext" /> that describes the service context.
+        /// </param>
+        public Service(StatefulServiceContext serviceContext) : base(serviceContext)
         {
-            this.StateManager.StateManagerChanged += this.StateManager_StateManagerChanged;
         }
 
         #region IUserDomainService Members
@@ -87,19 +87,6 @@ namespace Employee.Service
         }
 
         #endregion IUserDomainService Members
-
-        /// <summary>
-        ///     Override this method to supply the communication listeners for the service replica. The endpoints returned by the communication listener's
-        ///     are stored as a JSON string of ListenerName, Endpoint string pairs like
-        ///     {"Endpoints":{"Listener1":"Endpoint1","Listener2":"Endpoint2" ...}}
-        /// </summary>
-        /// <returns>
-        ///     List of ServiceReplicaListeners
-        /// </returns>
-        protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
-        {
-            return new[] { new ServiceReplicaListener(context => this.CreateServiceRemotingListener(context)) };
-        }
 
         /// <summary>
         ///     Services that want to implement a processing loop which runs when it is primary and has write status,

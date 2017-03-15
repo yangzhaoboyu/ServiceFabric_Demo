@@ -16,7 +16,7 @@
     <!-- 在创建此应用程序类型时，以下部分
          将创建服务类型的实例。你还可以使用 ServiceFabric PowerShell 模块创建
           一个或多个服务类型实例。
-         
+
          以下属性 ServiceTypeName 必须与导入的 ServiceManifest.xml 文件中所定义的名称相匹配。 -->
     <Service Name="Service">
       <StatefulService ServiceTypeName="ServiceType" TargetReplicaSetSize="[Service_TargetReplicaSetSize]" MinReplicaSetSize="[Service_MinReplicaSetSize]">
