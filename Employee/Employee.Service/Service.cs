@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Employee.Domain.Interface;
 using Employee.Domain.Interface.Backup;
+using Employee.Domain.Interface.Bus;
 using Employee.Domain.Interface.Models.Request;
 using Employee.Service.Models.User;
 using Microsoft.ServiceFabric.Data;
@@ -23,6 +24,7 @@ namespace Employee.Service
     /// <seealso cref="Employee.Domain.Interface.IUserDomainService" />
     internal sealed class Service : StatefulService, IUserDomainService
     {
+        private readonly SendService sendService = new SendService();
         private IBackupStore backupManager;
         private BackupManagerType backupStorageType;
 
@@ -100,20 +102,6 @@ namespace Employee.Service
         }
 
         /// <summary>
-        ///     This method is called as the final step before completing <see cref="M:System.Fabric.IStatefulServiceReplica.ChangeRoleAsync(System.Fabric.ReplicaRole,System.Threading.CancellationToken)" />.
-        ///     Override this method to be notified that ChangeRole has completed for this replica's internal components.
-        /// </summary>
-        /// <param name="newRole">New <see cref="T:System.Fabric.ReplicaRole" /> for this service replica.</param>
-        /// <param name="cancellationToken">Cancellation token to monitor for cancellation requests.</param>
-        /// <returns>
-        ///     A <see cref="T:System.Threading.Tasks.Task" /> that represents outstanding operation.
-        /// </returns>
-        protected override Task OnChangeRoleAsync(ReplicaRole newRole, CancellationToken cancellationToken)
-        {
-            return base.OnChangeRoleAsync(newRole, cancellationToken);
-        }
-
-        /// <summary>
         ///     Services that want to implement a processing loop which runs when it is primary and has write status,
         ///     just override this method with their logic.
         /// </summary>
@@ -157,6 +145,8 @@ namespace Employee.Service
             switch (e.Action)
             {
                 case NotifyDictionaryChangedAction.Add:
+                    NotifyDictionaryItemAddedEventArgs<string, UserState> addEvent = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
+                    if (addEvent != null) this.sendService.SendMessageAsync(addEvent.Value).GetAwaiter().GetResult();
                     ServiceEventSource.Current.Message("Add Dictionary.");
                     return;
 

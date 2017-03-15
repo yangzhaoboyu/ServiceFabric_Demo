@@ -24,6 +24,9 @@ namespace Employee.WebApi.Controllers
         [Route("Login")]
         public async Task<IHttpActionResult> Login(LoginRequest request)
         {
+            //    this.RequestContext.Principal.Identity;
+            //    Thread.CurrentPrincipal.Identity
+
             IUserDomainService client = ServiceProxy.Create<IUserDomainService>(new Uri("fabric:/Employee/Service"), new ServicePartitionKey(0));
             bool isSuc = await client.Login(new UserLoginRequestModel
             {
