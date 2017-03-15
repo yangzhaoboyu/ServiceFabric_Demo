@@ -1,7 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Fabric;
-using System.Fabric.Description;
-using System.Threading;
 using System.Threading.Tasks;
 using Employee.Domain.Interface;
 using Employee.Domain.Interface.Backup;
@@ -11,6 +10,9 @@ using Employee.Service.Models.User;
 using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
 using Microsoft.ServiceFabric.Data.Notifications;
+using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Runtime;
+using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace Employee.Service
 {
@@ -18,7 +20,7 @@ namespace Employee.Service
     /// </summary>
     /// <seealso cref="Microsoft.ServiceFabric.Services.Runtime.StatefulService" />
     /// <seealso cref="Employee.Domain.Interface.IUserDomainService" />
-    internal sealed class Service : JinyinmaoStatefulService, IUserDomainService
+    internal sealed class Service : StatefulService, IUserDomainService
     {
         private readonly SendService sendService = new SendService();
         private IBackupStore backupManager;
@@ -32,6 +34,7 @@ namespace Employee.Service
         /// </param>
         public Service(StatefulServiceContext serviceContext) : base(serviceContext)
         {
+            this.StateManager.StateManagerChanged += this.StateManager_StateManagerChanged;
         }
 
         #region IUserDomainService Members
@@ -89,36 +92,16 @@ namespace Employee.Service
         #endregion IUserDomainService Members
 
         /// <summary>
-        ///     Services that want to implement a processing loop which runs when it is primary and has write status,
-        ///     just override this method with their logic.
+        ///     Override this method to supply the communication listeners for the service replica. The endpoints returned by the communication listener's
+        ///     are stored as a JSON string of ListenerName, Endpoint string pairs like
+        ///     {"Endpoints":{"Listener1":"Endpoint1","Listener2":"Endpoint2" ...}}
         /// </summary>
-        /// <param name="cancellationToken">Cancellation token to monitor for cancellation requests.</param>
         /// <returns>
-        ///     A <see cref="T:System.Threading.Tasks.Task">Task</see> that represents outstanding operation.
+        ///     List of ServiceReplicaListeners
         /// </returns>
-        protected override Task RunAsync(CancellationToken cancellationToken)
+        protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
         {
-            return Task.WhenAll(this.PeriodicTakeBackupAsync(cancellationToken));
-        }
-
-        /// <summary>
-        ///     Backups the callback asynchronous.
-        /// </summary>
-        /// <param name="backupInfo">The backup information.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        private async Task<bool> BackupCallbackAsync(BackupInfo backupInfo, CancellationToken cancellationToken)
-        {
-            try
-            {
-                await this.backupManager.ArchiveBackupAsync(backupInfo, cancellationToken);
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            await this.backupManager.DeleteBackupsAsync(cancellationToken);
-            return true;
+            return new[] { new ServiceReplicaListener(context => this.CreateServiceRemotingListener(context)) };
         }
 
         /// <summary>
@@ -126,14 +109,15 @@ namespace Employee.Service
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="string" /> instance containing the event data.</param>
+        /// <exception cref="System.NotImplementedException"></exception>
         private void Dictionary_DictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<string, UserState> e)
         {
             if (this.Partition.WriteStatus != PartitionAccessStatus.Granted) return;
             switch (e.Action)
             {
                 case NotifyDictionaryChangedAction.Add:
-                    NotifyDictionaryItemAddedEventArgs<string, UserState> addEvent = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
-                    if (addEvent != null) this.sendService.SendMessageAsync(addEvent.Value).GetAwaiter().GetResult();
+                    NotifyDictionaryItemAddedEventArgs<string, UserState> addedEvent = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
+                    if (addedEvent != null) this.sendService.SendMessageAsync(addedEvent.Value).GetAwaiter().GetResult();
                     ServiceEventSource.Current.Message("Add Dictionary.");
                     return;
 
@@ -157,31 +141,11 @@ namespace Employee.Service
         }
 
         /// <summary>
-        ///     Periodics the take backup asynchronous.
+        ///     Handles the StateManagerChanged event of the StateManager control.
         /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns></returns>
-        private async Task PeriodicTakeBackupAsync(CancellationToken cancellationToken)
-        {
-            this.SetupBackupManager();
-            while (true)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (this.backupStorageType == BackupManagerType.None)
-                {
-                    break;
-                }
-                await Task.Delay(TimeSpan.FromSeconds(this.backupManager.backupFrequencyInSeconds));
-                BackupDescription backupDescription = new BackupDescription(BackupOption.Full, this.BackupCallbackAsync);
-                await this.BackupAsync(backupDescription, TimeSpan.FromHours(1), cancellationToken);
-            }
-        }
-
-        /// <summary>
-        ///     Processes the state manager single entity notification.
-        /// </summary>
+        /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="NotifyStateManagerChangedEventArgs" /> instance containing the event data.</param>
-        private void ProcessStateManagerSingleEntityNotification(NotifyStateManagerChangedEventArgs e)
+        private void StateManager_StateManagerChanged(object sender, NotifyStateManagerChangedEventArgs e)
         {
             NotifyStateManagerSingleEntityChangedEventArgs operation = e as NotifyStateManagerSingleEntityChangedEventArgs;
             if (operation != null && operation.Action == NotifyStateManagerChangedAction.Add)
@@ -191,52 +155,6 @@ namespace Employee.Service
                     IReliableDictionary<string, UserState> dictionary = (IReliableDictionary<string, UserState>)operation.ReliableState;
                     dictionary.DictionaryChanged += this.Dictionary_DictionaryChanged;
                 }
-            }
-        }
-
-        /// <summary>
-        ///     Setups the backup manager.
-        /// </summary>
-        /// <exception cref="System.ArgumentException">Unknown backup type</exception>
-        private void SetupBackupManager()
-        {
-            string partitionId = this.Context.PartitionId.ToString("N");
-            long minKey = ((Int64RangePartitionInformation)this.Partition.PartitionInfo).LowKey;
-            long maxKey = ((Int64RangePartitionInformation)this.Partition.PartitionInfo).HighKey;
-
-            if (this.Context.CodePackageActivationContext != null)
-            {
-                ICodePackageActivationContext codePackageContext = this.Context.CodePackageActivationContext;
-                ConfigurationPackage configPackage = codePackageContext.GetConfigurationPackageObject("Config");
-                ConfigurationSection configSection = configPackage.Settings.Sections["Inventory.Service.Settings"];
-                string backupSettingValue = configSection.Parameters["BackupMode"].Value;
-                if (string.Equals(backupSettingValue, "none", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    this.backupStorageType = BackupManagerType.None;
-                }
-                else if (string.Equals(backupSettingValue, "local", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    this.backupStorageType = BackupManagerType.Local;
-                    ConfigurationSection localBackupConfigSection = configPackage.Settings.Sections["Inventory.Service.BackupSettings.Local"];
-                    this.backupManager = new DiskBackupManager(localBackupConfigSection, partitionId, minKey, maxKey, codePackageContext.TempDirectory);
-                }
-                else
-                {
-                    throw new ArgumentException("Unknown backup type");
-                }
-            }
-        }
-
-        /// <summary>
-        ///     Handles the StateManagerChanged event of the StateManager control.
-        /// </summary>
-        /// <param name="sender">The source of the event.</param>
-        /// <param name="e">The <see cref="NotifyStateManagerChangedEventArgs" /> instance containing the event data.</param>
-        private void StateManager_StateManagerChanged(object sender, NotifyStateManagerChangedEventArgs e)
-        {
-            if (e.Action != NotifyStateManagerChangedAction.Rebuild)
-            {
-                this.ProcessStateManagerSingleEntityNotification(e);
             }
         }
     }

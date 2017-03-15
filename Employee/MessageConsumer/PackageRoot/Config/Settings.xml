@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Settings xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <!-- 在此处添加你的自定义配置节和参数 -->
+  <!--
+  <Section Name="MyConfigSection">
+    <Parameter Name="MyParameter" Value="Value1" />
+  </Section>
+  -->
+
+  <Section Name="ServiceBusSettings">
+    <Parameter Name="ServiceBusConnectionString" Value="Endpoint=sb://masstransitbuild.servicebus.chinacloudapi.cn/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=TtEDnMGcajxzxL7WusoNfxZ9DoskU/9GVOeKGFp/xgA=" />
+    <Parameter Name="ServiceBusQueueName" Value="sample-quartz-scheduler" />
+  </Section>
+</Settings>
