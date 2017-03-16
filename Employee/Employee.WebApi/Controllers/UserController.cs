@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Web.Http;
+using ConsumerConfigure.Domain.Interface.Interface;
+using ConsumerConfigure.Domain.Interface.Models.Request;
 using Employee.Domain.Interface;
 using Employee.Domain.Interface.Models.Request;
 using Employee.WebApi.Models.Request;
@@ -61,6 +63,25 @@ namespace Employee.WebApi.Controllers
                 RealName = request.RealName
             });
             return this.Ok(response);
+        }
+
+        /// <summary>
+        ///     分发配置注册
+        /// </summary>
+        /// <param name="request">The request.</param>
+        /// <returns></returns>
+        [Route("RegisterConfiguration")]
+        public async Task<IHttpActionResult> RegisterConfiguration(ConsumerConfigureRequest request)
+        {
+            IConsumerConfigure client = ServiceProxy.Create<IConsumerConfigure>(new Uri("fabric:/Consumer/ConsumerConfigure"), new ServicePartitionKey(0));
+            bool isSuc = await client.RegisterConfiguration(new ConsumerConfigureRequestModel
+            {
+                Action = request.Action,
+                Address = request.Address,
+                ServiceName = request.ServiceName,
+                DictionaryKey = request.DictionaryKey
+            });
+            return this.Ok(isSuc);
         }
     }
 }

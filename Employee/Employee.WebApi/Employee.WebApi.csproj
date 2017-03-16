@@ -131,6 +131,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\UserController.cs" />
+    <Compile Include="Models\Request\ConsumerConfigureRequest.cs" />
     <Compile Include="Models\Request\LoginRequest.cs" />
     <Compile Include="Models\Request\RegisterRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -150,6 +151,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ConsumerConfigure.Domain.Interface\ConsumerConfigure.Domain.csproj">
+      <Project>{baf0e0d7-4931-483c-9402-1d218989f4d4}</Project>
+      <Name>ConsumerConfigure.Domain</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Employee.Domain.Interface\Employee.Domain.Interface.csproj">
       <Project>{7acfd470-0ab1-4183-8f7e-47d6caa6a622}</Project>
       <Name>Employee.Domain.Interface</Name>

@@ -124,7 +124,7 @@ namespace Employee.Service
                     {
                         Action = Action.Add,
                         Value = add?.Value,
-                        AppName = this.Context.ServiceName.AbsoluteUri,
+                        ServiceName = this.Context.ServiceName.AbsoluteUri,
                         DictionaryKey = dictionary?.Name.AbsolutePath,
                         Key = null
                     }).GetAwaiter().GetResult();
@@ -136,7 +136,7 @@ namespace Employee.Service
                     {
                         Action = Action.Update,
                         Value = update?.Value,
-                        AppName = this.Context.ServiceTypeName,
+                        ServiceName = this.Context.ServiceTypeName,
                         DictionaryKey = dictionary?.Name.AbsolutePath,
                         Key = null
                     }).GetAwaiter().GetResult();
@@ -148,7 +148,7 @@ namespace Employee.Service
                     {
                         Action = Action.Delete,
                         Key = remove?.Key,
-                        AppName = this.Context.ServiceTypeName,
+                        ServiceName = this.Context.ServiceTypeName,
                         DictionaryKey = dictionary?.Name.AbsolutePath,
                         Value = null
                     }).GetAwaiter().GetResult();

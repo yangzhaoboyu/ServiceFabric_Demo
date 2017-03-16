@@ -13,9 +13,9 @@
     public class NotifyModel<T>
     {
         public Action Action { get; set; }
-        public string AppName { get; set; }
         public string DictionaryKey { get; set; }
         public string Key { get; set; }
+        public string ServiceName { get; set; }
         public T Value { get; set; }
     }
 }
