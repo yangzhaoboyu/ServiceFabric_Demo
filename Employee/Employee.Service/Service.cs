@@ -6,6 +6,7 @@ using Employee.Domain.Interface;
 using Employee.Domain.Interface.Backup;
 using Employee.Domain.Interface.Bus;
 using Employee.Domain.Interface.Models.Request;
+using Employee.Service.Models.Bus;
 using Employee.Service.Models.User;
 using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
@@ -13,6 +14,7 @@ using Microsoft.ServiceFabric.Data.Notifications;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
+using Action = Employee.Service.Models.Bus.Action;
 
 namespace Employee.Service
 {
@@ -109,25 +111,48 @@ namespace Employee.Service
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="string" /> instance containing the event data.</param>
-        /// <exception cref="System.NotImplementedException"></exception>
+        /// <exception cref="System.ArgumentOutOfRangeException"></exception>
         private void Dictionary_DictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<string, UserState> e)
         {
             if (this.Partition.WriteStatus != PartitionAccessStatus.Granted) return;
+            IReliableDictionary<string, UserState> dictionary = sender as IReliableDictionary<string, UserState>;
             switch (e.Action)
             {
                 case NotifyDictionaryChangedAction.Add:
-                    NotifyDictionaryItemAddedEventArgs<string, UserState> addedEvent = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
-                    if (addedEvent != null) this.sendService.SendMessageAsync(addedEvent.Value).GetAwaiter().GetResult();
-                    ServiceEventSource.Current.Message("Add Dictionary.");
-                    return;
+                    NotifyDictionaryItemAddedEventArgs<string, UserState> add = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
+                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    {
+                        Action = Action.Add,
+                        Value = add?.Value,
+                        AppName = this.Context.ServiceName.AbsoluteUri,
+                        DictionaryKey = dictionary?.Name.AbsolutePath,
+                        Key = null
+                    }).GetAwaiter().GetResult();
+                    break;
 
                 case NotifyDictionaryChangedAction.Update:
-                    ServiceEventSource.Current.Message("Update Dictionary.");
-                    return;
+                    NotifyDictionaryItemUpdatedEventArgs<string, UserState> update = e as NotifyDictionaryItemUpdatedEventArgs<string, UserState>;
+                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    {
+                        Action = Action.Update,
+                        Value = update?.Value,
+                        AppName = this.Context.ServiceTypeName,
+                        DictionaryKey = dictionary?.Name.AbsolutePath,
+                        Key = null
+                    }).GetAwaiter().GetResult();
+                    break;
 
                 case NotifyDictionaryChangedAction.Remove:
-                    ServiceEventSource.Current.Message("Remove Dictionary.");
-                    return;
+                    NotifyDictionaryItemRemovedEventArgs<string, UserState> remove = e as NotifyDictionaryItemRemovedEventArgs<string, UserState>;
+                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    {
+                        Action = Action.Delete,
+                        Key = remove?.Key,
+                        AppName = this.Context.ServiceTypeName,
+                        DictionaryKey = dictionary?.Name.AbsolutePath,
+                        Value = null
+                    }).GetAwaiter().GetResult();
+                    break;
 
                 case NotifyDictionaryChangedAction.Clear:
                     break;

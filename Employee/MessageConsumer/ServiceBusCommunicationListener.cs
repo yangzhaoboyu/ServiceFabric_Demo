@@ -105,8 +105,10 @@ namespace Employee.Domain.Interface.Bus
             {
                 try
                 {
+                    //分发 具体处理
                     this.ProcessingMessage.Reset();
                     string messageBody = message.GetBody<string>();
+
                     ServiceEventSource.Current.Message($"Consumer Message {messageBody}");
                 }
                 catch (Exception)

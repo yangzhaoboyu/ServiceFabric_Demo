@@ -27,7 +27,16 @@ namespace Employee.WebApi.Controllers
             //    this.RequestContext.Principal.Identity;
             //    Thread.CurrentPrincipal.Identity
 
+            //var owin = HttpContext.Current
+
+            //IOwinContext context = this.Request.GetOwinContext();
+            //HttpRequestContext newcontext = this.Request.GetRequestContext();
+            //HttpRequestContext scontext = this.ActionContext.RequestContext;
+            //HttpContext current = HttpContext.Current;
+
+            //OwinContext owinContext = this.User
             IUserDomainService client = ServiceProxy.Create<IUserDomainService>(new Uri("fabric:/Employee/Service"), new ServicePartitionKey(0));
+
             bool isSuc = await client.Login(new UserLoginRequestModel
             {
                 CellPhone = request.CallPhone,
