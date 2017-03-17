@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Fabric;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,8 +20,7 @@ namespace ConsumerConfigure
     public sealed class ConsumerConfigure : StatefulService, IConsumerConfigure
     {
         private static readonly string ConfigureKey = "ConsumerConfigure";
-        private static readonly string DictionaryKey = "ConsumerConfigure";
-        private IReliableDictionary<string, List<ConsumerConfigureState>> dictionary;
+        private static readonly string DictionaryKey = "DictionaryConfigure";
 
         public ConsumerConfigure(StatefulServiceContext context)
             : base(context)
@@ -38,18 +36,23 @@ namespace ConsumerConfigure
         /// <returns></returns>
         public async Task<ConsumerConfigureQueryResponseModel> QueryConfiguration(ConsumerConfigureQueryRequestModel request)
         {
-            this.dictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, List<ConsumerConfigureState>>>(DictionaryKey);
+            IReliableDictionary<string, ConsumerConfiguresState> dictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, ConsumerConfiguresState>>(DictionaryKey);
             using (ITransaction tx = this.StateManager.CreateTransaction())
             {
-                ConditionalValue<List<ConsumerConfigureState>> result = await this.dictionary.TryGetValueAsync(tx, ConfigureKey);
+                ConditionalValue<ConsumerConfiguresState> result = await dictionary.TryGetValueAsync(tx, ConfigureKey);
                 if (!result.HasValue) return null;
-                ConsumerConfigureState configureState = result.Value.First(x => x.Action.Equals(request.Action) && x.ServiceName.Equals(request.AppName) && x.DictionaryKey.Equals(request.DictionaryKey));
+                List<ConsumerConfigureInfo> configureState = result.Value.Configures.Where(x => x.Action.Equals(request.Action) && x.ServiceName.Equals(request.AppName) && x.DictionaryKey.Equals(request.DictionaryKey)).ToList();
                 ConsumerConfigureQueryResponseModel response = new ConsumerConfigureQueryResponseModel
                 {
-                    Action = configureState.Action,
-                    Address = configureState.Address,
-                    ServiceName = configureState.ServiceName,
-                    DictionaryKey = configureState.DictionaryKey
+                    ResultCode = 1,
+                    ResultDesc = "查询成功",
+                    Configure = configureState.ConvertAll(x => (new ConsumerConfigureQueryResponseInfo
+                    {
+                        Action = x.Action,
+                        Address = x.Address,
+                        DictionaryKey = x.DictionaryKey,
+                        ServiceName = x.ServiceName
+                    }))
                 };
                 return response;
             }
@@ -62,22 +65,42 @@ namespace ConsumerConfigure
         /// <returns></returns>
         public async Task<bool> RegisterConfiguration(ConsumerConfigureRequestModel request)
         {
-            this.dictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, List<ConsumerConfigureState>>>(DictionaryKey);
+            IReliableDictionary<string, ConsumerConfiguresState> dictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, ConsumerConfiguresState>>(DictionaryKey);
             using (ITransaction tx = this.StateManager.CreateTransaction())
             {
-                ConditionalValue<List<ConsumerConfigureState>> result = await this.dictionary.TryGetValueAsync(tx, ConfigureKey);
-                if (result.HasValue) return false;
-                int count = result.Value.Count(x => x.Action.Equals(request.Action) && x.ServiceName.Equals(request.ServiceName) && x.DictionaryKey.Equals(request.DictionaryKey));
-                if (count > 0) return false;
-                List<ConsumerConfigureState> configure = result.Value;
-                configure.Add(new ConsumerConfigureState
+                ConditionalValue<ConsumerConfiguresState> result = await dictionary.TryGetValueAsync(tx, ConfigureKey);
+                bool isSuc;
+                if (result.HasValue)
                 {
-                    Action = request.Action,
-                    Address = new Uri(request.Address),
-                    ServiceName = request.ServiceName,
-                    DictionaryKey = request.DictionaryKey
-                });
-                return await this.dictionary.TryUpdateAsync(tx, ConfigureKey, configure, result.Value);
+                    int count = result.Value.Configures.Count(x => x.Action.Equals(request.Action) && x.ServiceName.Equals(request.ServiceName) && x.DictionaryKey.Equals(request.DictionaryKey));
+                    if (count > 0) return false;
+                    ConsumerConfiguresState configure = result.Value;
+                    configure.Configures.Add(new ConsumerConfigureInfo
+                    {
+                        Action = request.Action,
+                        Address = request.Address,
+                        ServiceName = request.ServiceName,
+                        DictionaryKey = request.DictionaryKey
+                    });
+                    isSuc = await dictionary.TryUpdateAsync(tx, ConfigureKey, configure, result.Value);
+                    return isSuc;
+                }
+                ConsumerConfiguresState state = new ConsumerConfiguresState
+                {
+                    Configures = new List<ConsumerConfigureInfo>
+                    {
+                        new ConsumerConfigureInfo
+                        {
+                            Action = request.Action,
+                            Address = request.Address,
+                            ServiceName = request.ServiceName,
+                            DictionaryKey = request.DictionaryKey
+                        }
+                    }
+                };
+                isSuc = await dictionary.TryAddAsync(tx, ConfigureKey, state);
+                await tx.CommitAsync();
+                return isSuc;
             }
         }
 

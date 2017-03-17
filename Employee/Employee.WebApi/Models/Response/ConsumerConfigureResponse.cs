@@ -1,8 +1,6 @@
-﻿using System.Security.Policy;
-
-namespace ConsumerConfigure.Domain.Interface.Models.Request
+﻿namespace Employee.WebApi.Models.Response
 {
-    public class ConsumerConfigureRequestModel
+    internal class ConsumerConfigureResponse
     {
         /// <summary>
         ///     操作标识
@@ -12,7 +10,7 @@ namespace ConsumerConfigure.Domain.Interface.Models.Request
         /// <summary>
         ///     消费地址
         /// </summary>
-        public Url Address { get; set; }
+        public string Address { get; set; }
 
         /// <summary>
         ///     字典标识

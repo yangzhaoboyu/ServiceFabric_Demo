@@ -131,9 +131,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\UserController.cs" />
+    <Compile Include="Models\Request\ConsumerConfigureQueryRequest.cs" />
     <Compile Include="Models\Request\ConsumerConfigureRequest.cs" />
     <Compile Include="Models\Request\LoginRequest.cs" />
     <Compile Include="Models\Request\RegisterRequest.cs" />
+    <Compile Include="Models\Response\ConsumerConfigureQueryResponse.cs" />
+    <Compile Include="Models\Response\ConsumerConfigureResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="OwinCommunicationListener.cs" />
     <Compile Include="WebApi.cs" />
