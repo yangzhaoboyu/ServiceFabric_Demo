@@ -78,7 +78,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="JinyinmaoStatefulService.cs" />
-    <Compile Include="Models\Bus\NotifyModel.cs" />
     <Compile Include="Models\User\UserState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Service.cs" />
@@ -92,6 +91,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BusNotifyBase\BusNotify.csproj">
+      <Project>{9cc0ff3f-ed0c-4733-9c30-011eb4cbb73a}</Project>
+      <Name>BusNotify</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Employee.Domain.Interface\Employee.Domain.Interface.csproj">
       <Project>{7acfd470-0ab1-4183-8f7e-47d6caa6a622}</Project>
       <Name>Employee.Domain.Interface</Name>

@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Fabric;
 using System.Threading.Tasks;
+using BusNotify;
 using Employee.Domain.Interface;
 using Employee.Domain.Interface.Backup;
 using Employee.Domain.Interface.Bus;
 using Employee.Domain.Interface.Models.Request;
-using Employee.Service.Models.Bus;
 using Employee.Service.Models.User;
 using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
@@ -14,7 +14,6 @@ using Microsoft.ServiceFabric.Data.Notifications;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
-using Action = Employee.Service.Models.Bus.Action;
 
 namespace Employee.Service
 {
@@ -120,10 +119,10 @@ namespace Employee.Service
             {
                 case NotifyDictionaryChangedAction.Add:
                     NotifyDictionaryItemAddedEventArgs<string, UserState> add = e as NotifyDictionaryItemAddedEventArgs<string, UserState>;
-                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    this.sendService.SendMessageAsync(new FabricNotifyModel
                     {
-                        Action = Action.Add,
-                        Value = add?.Value,
+                        Action = NotifyAction.Add,
+                        Value = add?.Value.ToJson(),
                         ServiceName = this.Context.ServiceName.AbsoluteUri,
                         DictionaryKey = dictionary?.Name.AbsolutePath,
                         Key = null
@@ -132,10 +131,10 @@ namespace Employee.Service
 
                 case NotifyDictionaryChangedAction.Update:
                     NotifyDictionaryItemUpdatedEventArgs<string, UserState> update = e as NotifyDictionaryItemUpdatedEventArgs<string, UserState>;
-                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    this.sendService.SendMessageAsync(new FabricNotifyModel
                     {
-                        Action = Action.Update,
-                        Value = update?.Value,
+                        Action = NotifyAction.Update,
+                        Value = update?.Value.ToJson(),
                         ServiceName = this.Context.ServiceTypeName,
                         DictionaryKey = dictionary?.Name.AbsolutePath,
                         Key = null
@@ -144,9 +143,9 @@ namespace Employee.Service
 
                 case NotifyDictionaryChangedAction.Remove:
                     NotifyDictionaryItemRemovedEventArgs<string, UserState> remove = e as NotifyDictionaryItemRemovedEventArgs<string, UserState>;
-                    this.sendService.SendMessageAsync(new NotifyModel<UserState>
+                    this.sendService.SendMessageAsync(new FabricNotifyModel
                     {
-                        Action = Action.Delete,
+                        Action = NotifyAction.Delete,
                         Key = remove?.Key,
                         ServiceName = this.Context.ServiceTypeName,
                         DictionaryKey = dictionary?.Name.AbsolutePath,

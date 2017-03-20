@@ -29,6 +29,7 @@
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Consumer.WebApi\Consumer.WebApi.csproj" />
     <ProjectReference Include="..\ConsumerConfigure\ConsumerConfigure.csproj" />
     <ProjectReference Include="..\MessageConsumer\MessageConsumer.csproj" />
   </ItemGroup>

@@ -1,11 +1,18 @@
 ﻿using System;
 using System.Fabric;
 using System.Fabric.Description;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using ConsumerConfigure.Domain.Interface.Interface;
+using ConsumerConfigure.Domain.Interface.Models.Request;
+using ConsumerConfigure.Domain.Interface.Models.Response;
 using MessageConsumer;
 using Microsoft.ServiceBus.Messaging;
+using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
+using Microsoft.ServiceFabric.Services.Remoting.Client;
+using Newtonsoft.Json;
 
 namespace Employee.Domain.Interface.Bus
 {
@@ -24,6 +31,11 @@ namespace Employee.Domain.Interface.Bus
         ///     The service bus queue name
         /// </summary>
         private readonly string serviceBusQueueName;
+
+        /// <summary>
+        ///     The client
+        /// </summary>
+        private IConsumerConfigure client = ServiceProxy.Create<IConsumerConfigure>(new Uri("fabric:/Consumer/ConsumerConfigure"), new ServicePartitionKey(0));
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="ServiceBusCommunicationListener" /> class.
@@ -99,7 +111,7 @@ namespace Employee.Domain.Interface.Bus
         Task<string> ICommunicationListener.OpenAsync(CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(this.serviceBusConnectionString) || string.IsNullOrWhiteSpace(this.serviceBusQueueName))
-                throw new ArgumentNullException("ServiceBusConnectionString Or ServiceBusQueueName Configuration Is Empty");
+                throw new ArgumentNullException("ServiceBusConnectionString Or ServiceBusQueueName Configuration Is Empty", new Exception());
             this.ServiceBusClient = QueueClient.CreateFromConnectionString(this.serviceBusConnectionString, this.serviceBusQueueName);
             this.ServiceBusClient.OnMessage(message =>
             {
@@ -107,9 +119,18 @@ namespace Employee.Domain.Interface.Bus
                 {
                     //分发 具体处理
                     this.ProcessingMessage.Reset();
-                    string messageBody = message.GetBody<string>();
-
-                    ServiceEventSource.Current.Message($"Consumer Message {messageBody}");
+                    dynamic eventSource = JsonConvert.DeserializeObject<dynamic>(message.GetBody<string>());
+                    ConsumerConfigureQueryResponseModel result = client.QueryConfiguration(new ConsumerConfigureQueryRequestModel
+                    {
+                        Action = eventSource.Action,
+                        AppName = eventSource.ServiceName,
+                        DictionaryKey = eventSource.DictionaryKey
+                    }).GetAwaiter().GetResult();
+                    if (result.ResultCode == 1)
+                    {
+                        HttpClient client = new HttpClient();
+                    }
+                    ServiceEventSource.Current.Message($"Consumer Message {message.GetBody<string>()}");
                 }
                 catch (Exception)
                 {
