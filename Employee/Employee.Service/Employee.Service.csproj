@@ -91,8 +91,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\BusNotifyBase\BusNotify.csproj">
-      <Project>{9cc0ff3f-ed0c-4733-9c30-011eb4cbb73a}</Project>
+    <ProjectReference Include="..\BusNotify\BusNotify.csproj">
+      <Project>{5994773E-4B7D-423C-BE2E-577318DB2D49}</Project>
       <Name>BusNotify</Name>
     </ProjectReference>
     <ProjectReference Include="..\Employee.Domain.Interface\Employee.Domain.Interface.csproj">

@@ -2,11 +2,11 @@
 {
     public class FabricNotifyModel : INotify
     {
-        public NotifyAction Action { get; set; }
         public string Value { get; set; }
 
         #region INotify Members
 
+        public NotifyAction Action { get; set; }
         public string DictionaryKey { get; set; }
         public string Key { get; set; }
         public string ServiceName { get; set; }
